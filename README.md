@@ -1,47 +1,45 @@
-# 项目名称
+# Project Name
 
-这个项目是一个EEG分类模型的最小训练框架
+This project is a minimalist training framework for EEG (Electroencephalography) classification models.
 
-## architectures 文件夹
+## `architectures` Directory
 
-`architectures` 文件夹内包含了 5 个使用 `PyTorch` 实现的深度神经网络模型。详细介绍如下：
+The `architectures` directory includes five deep neural network models implemented using `PyTorch`. Detailed descriptions are as follows:
 
-### 简介
+### Introduction
 
-本项目中的这几个模型均主要用于运动想象(Motor Imagery)分类任务。它们的实现基于 `PyTorch` 框架，具有较好的可扩展性和易用性。EEGSym作者提供了基于`tensorflow`的模型代码，可点击下面原文中直接下载。
+The models in this project are mainly used for Motor Imagery classification tasks. They are implemented based on the `PyTorch` framework, offering excellent scalability and ease of use. The author of EEGSym provides the model code based on `tensorflow`, which can be directly downloaded from the links provided in the original text.
 
-### 文件列表
+### File List
 
-- `model_standard_EEGNet.py`: 包含了EEGNet模型的实现代码。[论文](https://arxiv.org/abs/1611.08024) 
-- `model_standard_InceptionEEG.py`: 包含了InceptionEEG模型的实现代码。[论文](https://ieeexplore.ieee.org/document/9311146) 
-- `model_standard_Deep.py`: 包含了DeepConvNet模型的实现代码。[论文](https://arxiv.org/abs/1703.05051) [代码参考](https://github.com/braindecode/braindecode/tree/master/braindecode/models)
-- `model_standard_ShallowFBCSPNet.py`: 包含了ShallowConvNet模型的实现代码。[论文](https://arxiv.org/abs/1703.05051) [代码参考](https://github.com/braindecode/braindecode/tree/master/braindecode/models)
-- `model_standard_EEGSym.py`: 包含了EEGSym模型的实现代码。[论文](https://ieeexplore.ieee.org/document/9807323) 
-- `utils`: 包含了DeepConvNet模型和ShallowConvNet模型的一些依赖。
+- `model_standard_EEGNet.py`: Contains the implementation code for the EEGNet model. [Research Paper](https://arxiv.org/abs/1611.08024)
+- `model_standard_InceptionEEG.py`: Contains the implementation code for the InceptionEEG model. [Research Paper](https://ieeexplore.ieee.org/document/9311146)
+- `model_standard_Deep.py`: Contains the implementation code for the DeepConvNet model. [Research Paper](https://arxiv.org/abs/1703.05051) [Code Reference](https://github.com/braindecode/braindecode/tree/master/braindecode/models)
+- `model_standard_ShallowFBCSPNet.py`: Contains the implementation code for the ShallowConvNet model. [Research Paper](https://arxiv.org/abs/1703.05051) [Code Reference](https://github.com/braindecode/braindecode/tree/master/braindecode/models)
+- `model_standard_EEGSym.py`: Contains the implementation code for the EEGSym model. [Research Paper](https://ieeexplore.ieee.org/document/9807323)
+- `utils`: Contains dependencies for the DeepConvNet and ShallowConvNet models.
 
-### 使用方法
+### Usage
 
-将模型放入到你的框架里面即可，模型的输入输出在每个模型文件中有demo，输入的shape是：`[batch_size, n, num_channels, num_sampling]`， `n`一般是1，如果有其他操作，比如两个trial作为一个样本，你可以设置为2。
+To use the models, simply incorporate them into your framework. A demo for the model input and output is available in each model file. The input shape is: `[batch_size, n, num_channels, num_sampling]`. `n` is typically 1. If there are other operations, such as two trials as one sample, you can set `n` to 2.
 
-## utils 文件夹
-- `data_loader.py`: 一个类，实现pytorch专用的EEG数据加载功能。
-- `parse_config.py`: 一个类，实现读取训练参数的功能。
-- `test.py`: 一个函数，包含了模型的测试代码。
+## `utils` Directory
+- `data_loader.py`: A class that implements a PyTorch-specific EEG data loading function.
+- `parse_config.py`: A class that implements a function for reading training parameters.
+- `test.py`: A function containing the model's test code.
 
-### 使用方法
+### Usage
 
-1. 准备数据：将源域和目标域的数据分别保存在不同的文件夹中，并确保每个文件夹内的图像都属于同一个类别。
-2. 确定超参数：在 `main.py` 中设置网络超参数，如迭代次数、学习率，模型保存路径等, 然后运行，训练模型。
-3. 训练完成后：运行 `evaluate.py` 测试模型。
+1. Data preparation: Save the source and target domain data in different folders, ensuring that all images in each folder belong to the same category.
+2. Determine hyperparameters: Set network hyperparameters in `main.py`, such as the number of iterations, learning rate, model save path, etc., then run it to train the model.
+3. After training is complete: Run `evaluate.py` to test the model.
 
+## `record` Directory
+Stores training results
 
-## record 文件夹
-存放训练结果
+## `demo_data` Directory
+Stores example datasets
 
-## demo_data 文件夹
-存放示例数据集
+## Copyright Information
 
-## 版权信息
-
-本项目代码遵循 [MIT LICENSE](LICENSE) 许可证。
-
+The code of this project follows the [MIT LICENSE](LICENSE).
