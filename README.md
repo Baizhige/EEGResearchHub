@@ -1,8 +1,11 @@
 # Project Name
+This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` .🔥 🔥 
 
-This project is a minimalist training framework for EEG (Electroencephalography) classification models.
-Simple use: Run "main.py".
+Quick Start: 
 
+0. Create environment by  ` $ conda create --name <your env name> --file <requirements.txt>` . In the current version, CUDA has been embedded into the environment. When creating the environment with this command, there's no need for an external installation or modification of your CUDA environment
+1. Edit ` config.ini` to modify training parameters.
+2. Run ` main.py` .
 ## `architectures` Directory
 
 The `architectures` directory includes five deep neural network models implemented using `PyTorch`. Detailed descriptions are as follows:
@@ -39,7 +42,7 @@ To use the models, simply incorporate them into your framework. A demo for the m
 Stores training results
 
 ## `demo_data` Directory
-Stores example datasets
+Stores example datasets. It currently consists of BCICIV 2a dataset. The `DL_BCICIV2a_c2RL_640_no_filter_pro` folder stores data indices divided by 5-fold cross-validation, these indices also abide by the criteria of cross-subject studies. For instance, MI_train0, MI_eval0, and MI_test0 represent the data indices for the training set, validation set, and test set of the 0th fold, respectively. 
 
 ## Copyright Information
 
