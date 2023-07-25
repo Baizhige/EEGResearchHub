@@ -1,9 +1,8 @@
 # Project Name
-
-This project is a minimalist training framework for EEG (Electroencephalography) classification models.
+This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` .
 Simple use: 
-Run ` main.py` .
-` config.ini` records training parameters.
+1. Edit ` config.ini` to modify training parameters.
+2. Run ` main.py` .
 ## `architectures` Directory
 
 The `architectures` directory includes five deep neural network models implemented using `PyTorch`. Detailed descriptions are as follows:
