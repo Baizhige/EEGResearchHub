@@ -1,8 +1,9 @@
 # Project Name
 
 This project is a minimalist training framework for EEG (Electroencephalography) classification models.
-Simple use: Run "main.py".
-
+Simple use: 
+Run ` main.py` .
+` config.ini` records training parameters.
 ## `architectures` Directory
 
 The `architectures` directory includes five deep neural network models implemented using `PyTorch`. Detailed descriptions are as follows:
