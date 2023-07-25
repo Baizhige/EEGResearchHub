@@ -1,5 +1,6 @@
 # Project Name
-This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` 🔥 🔥 .
+This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` .🔥 🔥 
+
 Simple use: 
 1. Edit ` config.ini` to modify training parameters.
 2. Run ` main.py` .
