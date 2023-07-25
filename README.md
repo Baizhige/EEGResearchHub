@@ -1,4 +1,4 @@
-# Project Name
+# A Simple EEG Classification Task
 This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` .🔥 🔥 
 
 Quick Start: 
