@@ -40,7 +40,7 @@ To use the models, simply incorporate them into your framework. A demo for the m
 Stores training results
 
 ## `demo_data` Directory
-Stores example datasets
+Stores example datasets. It currently consists of BCICIV 2a dataset.
 
 ## Copyright Information
 
