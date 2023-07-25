@@ -1,6 +1,7 @@
 # Project Name
 
 This project is a minimalist training framework for EEG (Electroencephalography) classification models.
+Simple use: Run "main.py".
 
 ## `architectures` Directory
 
