@@ -2,6 +2,7 @@
 This GitHub repository is a general-purpose EEG neural network training framework. Some of the code is derived and reorganized from the author's upcoming private repository ` EEG-IRT` .🔥 🔥 
 
 Simple use: 
+
 0. Create environment by  ` $ conda create --name <your env name> --file <requirements.txt>` . In the current version, CUDA has been embedded into the environment. When creating the environment with this command, there's no need for an external installation or modification of your CUDA environment
 1. Edit ` config.ini` to modify training parameters.
 2. Run ` main.py` .
