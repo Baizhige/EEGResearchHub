@@ -32,12 +32,6 @@ To use the models, simply incorporate them into your framework. A demo for the m
 - `parse_config.py`: A class that implements a function for reading training parameters.
 - `test.py`: A function containing the model's test code.
 
-### Usage
-
-1. Data preparation: Save the source and target domain data in different folders, ensuring that all images in each folder belong to the same category.
-2. Determine hyperparameters: Set network hyperparameters in `main.py`, such as the number of iterations, learning rate, model save path, etc., then run it to train the model.
-3. After training is complete: Run `evaluate.py` to test the model.
-
 ## `record` Directory
 Stores training results
 
