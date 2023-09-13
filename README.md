@@ -16,13 +16,13 @@ You can find detailed information about each project, including how to set up an
 
 - **Languages:** English & 中文 (Chinese)
 - **Description:** This project is aimed at augmenting EEG data using various techniques like SVG. It consists of two directories: `config` for electrode position configurations and `tools` for the implementation of augmentation techniques.
-- **[Read More in English](./EEG_Novel_Data_Augmentation/README_En.md) | [更多信息 (中文版)](./EEG_Novel_Data_Augmentation/README_Ch.md)**
+- **[Read More in English](./EEG_Novel_Data_Augmentation/README_En.md) | [更多信息](./EEG_Novel_Data_Augmentation/README_Ch.md)**
 
 ## [A Simple EEG Classification Task](./A_Quick_EEG_Classification/README_En.md)
 
 - **Languages:** English & 中文 (Chinese)
 - **Description:** A general-purpose EEG neural network training framework. It features a collection of deep neural network architectures for Motor Imagery classification tasks.
-- **[Read More in English](./A_Quick_EEG_Classification/README_En.md) | [更多信息 (中文版)](./A_Quick_EEG_Classification/README_Ch.md)**
+- **[Read More in English](./A_Quick_EEG_Classification/README_En.md) | [更多信息](./A_Quick_EEG_Classification/README_Ch.md)**
 
 ## Language Options
 
