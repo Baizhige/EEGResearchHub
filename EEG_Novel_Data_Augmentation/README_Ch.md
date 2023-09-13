@@ -29,6 +29,7 @@ SVG.py
 **自定义支持：** 如果你需要在其他的数据集中使用，你需要自己制作一份包含电极信息的 `.npy` 文件。
 
 **参考：** 如果你需要引用，请引用一下这篇论文：
+
 `@ARTICLE{10248038,
   author={Qin, Chengxuan and Yang, Rui and Huang, Mengjie and Liu, Weibo and Wang, Zidong},
   journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
