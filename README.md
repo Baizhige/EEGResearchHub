@@ -1,5 +1,5 @@
 # EEGResearchHub
-
+![Banner](__docs__/logo.svg)
 Welcome to the EEG Research Toolbox! This repository serves as a hub for various projects focused on EEG (Electroencephalogram) research. This README is available in the following languages:
 
 - **[English (Current)](./README.md)**
