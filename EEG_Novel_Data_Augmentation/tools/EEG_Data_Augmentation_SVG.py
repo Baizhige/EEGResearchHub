@@ -4,56 +4,57 @@ import os
 
 class SVG(object):
     """
-    SVG类 用于EEG数据的增强。
-    参数:
-    cuda (bool): 是否使用CUDA加速。默认为False。
-    right_idx (list): 右侧电极索引。默认为None。
-    left_idx (list): 左侧电极索引。默认为None。
-    sigma_rotate_theta (float): Theta方向旋转的标准差。默认为0.314。
-    sigma_rotate_phi (float): Phi方向旋转的标准差。默认为0.1。
-    sigma_stretch_theta (float): Theta方向拉伸的标准差。默认为0.1。
-    sigma_stretch_phi (float): Phi方向拉伸的标准差。默认为0.05。
-    sigma_pos (float): 位置扭曲的标准差。默认为0.05。
-    probability_flip (float): 翻转概率。默认为0.5。
-    cap (str): EEG帽的类型（例如'PhysioNetMI'）。默认为'physionet'。
+SVG class for EEG data augmentation.
+Parameters:
+    cuda (bool): Whether to use CUDA for acceleration. Default is False.
+    right_idx (list): Indexes for right-side electrodes. Default is None.
+    left_idx (list): Indexes for left-side electrodes. Default is None.
+    sigma_rotate_theta (float): Standard deviation for theta rotation. Default is 0.314.
+    sigma_rotate_phi (float): Standard deviation for phi rotation. Default is 0.1.
+    sigma_stretch_theta (float): Standard deviation for theta stretching. Default is 0.1.
+    sigma_stretch_phi (float): Standard deviation for phi stretching. Default is 0.05.
+    sigma_pos (float): Standard deviation for position distortion. Default is 0.05.
+    probability_flip (float): Probability of flipping. Default is 0.5.
+    cap (str): Type of EEG cap (e.g., 'PhysioNetMI'). Default is 'physionet'.
 
-    示例:
-        # 创建SVG对象
+Examples:
+    # Create SVG object
     svg = SVG(cuda=True, sigma_rotate_theta=0.3, sigma_rotate_phi=0.1, cap='PhysioNetMI')
 
-    # 输入数据
-    input_data = torch.rand([64,480]).cuda()  # 假设这是EEG数据，64为通道个数，480为序列长度。
+    # Input data
+    input_data = torch.rand([64,480]).cuda()  # Assume this is EEG data with 64 channels and 480 time points.
 
-    # 进行自动模式下的变换
+    # Perform transformation in automatic mode
     output_data, is_flip = svg.transform(input_data, mode='Auto')
 
-    # 进行旋转操作
+    # Perform rotation
     output_data, is_flip = svg.transform(input_data, mode='rotation')
 
-    # 进行缩放操作
+    # Perform scaling
     output_data, is_flip = svg.transform(input_data, mode='scaling')
 
-    # 进行扭曲操作
+    # Perform distortion
     output_data, is_flip = svg.transform(input_data, mode='distortion')
 
-    # 进行左右翻转
+    # Perform left-right flipping
     output_data, is_flip = svg.transform(input_data, mode='flipping')
 
     """
     def __init__(self,
-                 cuda=False, # bool类型，是否使用GPU加速
-                 right_idx=None, # 右侧电极通道的索引
-                 left_idx=None, # 左侧电极通道的索引
-                 sigma_rotate_theta=0.314, # theta旋转角度的标准差
-                 sigma_rotate_phi=0.1,  # phi旋转角度的标准差
-                 sigma_stretch_theta=0.1, # theta拉伸角度的标准差
-                 sigma_stretch_phi=0.05, # phi拉伸角度的标准差
-                 sigma_pos=0.05, # 随机电极标准差
-                 probability_flip=0.5, # 左右翻转的概率
-                 cap='PhysioNetMI'): # 脑电帽型号（physionet意味着数据集physionet所使用的脑电帽，详见参数config）
-        # 初始化设备，如果cuda为True，使用GPU
+                 cuda=False,  # Boolean type, whether to use GPU acceleration
+                 right_idx=None,  # Index of the electrode channel on the right side
+                 left_idx=None,  # Index of the electrode channel on the left side
+                 sigma_rotate_theta=0.314,  # Standard deviation of the theta rotation angle
+                 sigma_rotate_phi=0.1,  # Standard deviation of the phi rotation angle
+                 sigma_stretch_theta=0.1,  # Standard deviation of the theta stretching angle
+                 sigma_stretch_phi=0.05,  # Standard deviation of the phi stretching angle
+                 sigma_pos=0.05,  # Standard deviation for random electrode placement
+                 probability_flip=0.5,  # Probability of left-right flipping
+                 cap='PhysioNetMI' # EEG cap model (PhysioNet means the EEG cap used in the PhysioNet dataset, see parameter config for details)
+                 ):
+        # Initialize the device; use GPU if cuda is True
         self.device = torch.device("cuda:0" if cuda else "cpu")
-        # 设置RBF 高斯核的指数， 取值为负数
+        # Set the exponent for the RBF Gaussian kernel, the value is negative
         self.att_k = -3
         self.right_idx = right_idx
         self.left_idx = left_idx
@@ -80,7 +81,7 @@ class SVG(object):
         self.transform_matrix_flipping = torch.mm(self.weight_matrix_flipping, self.weight_matrix_raw_inv)
 
 
-    # 计算权重矩阵
+    # Compute Weight Matrix
     def get_weight_matrix(self, electrode_pos, source_signal_pos):
         theta_e = electrode_pos[0, :].view(self.num_channels, 1)
         theta_s = source_signal_pos[0, :].view(self.num_channels, 1)
@@ -91,13 +92,13 @@ class SVG(object):
         weight_matrix = torch.exp(self.att_k * geo_adj)
         return weight_matrix
 
-    # 获取变换矩阵
+    # Compute Transform Matrix
     def get_transform_matrix(self, electrode_pos, source_signal_pos):
         transform_matrix_aug = torch.mm(self.get_weight_matrix(electrode_pos, source_signal_pos), self.weight_matrix_raw_inv)
         transform_matrix_aug = torch.div(transform_matrix_aug,torch.transpose(torch.sum(transform_matrix_aug,dim=1).expand(self.num_channels, self.num_channels),0,1))
         return transform_matrix_aug
 
-    # 进行旋转操作
+    # Implement Rotation
     def rotation(self, angle="both"):
         electrode_pos_aug = self.electrode_pos_raw.clone().detach()
         source_signal_pos_aug = self.source_signal_pos_raw.clone().detach()
@@ -116,7 +117,7 @@ class SVG(object):
             raise "Warning!"
         return electrode_pos_aug, source_signal_pos_aug
 
-    # 进行缩放操作
+    # Implement Scaling
     def scaling(self, angle="both"):
         electrode_pos_aug = self.electrode_pos_raw.clone().detach()
         source_signal_pos_aug = self.source_signal_pos_raw.clone().detach()
@@ -136,14 +137,14 @@ class SVG(object):
             raise "Warning!"
         return electrode_pos_aug, source_signal_pos_aug
 
-    # 执行左右翻转
+    # Implement Flipping
     def flipping(self):
         electrode_pos_aug = self.electrode_pos_raw.clone().detach()
         source_signal_pos_aug = self.source_signal_pos_raw.clone().detach()
         source_signal_pos_aug[0, :] = -1*source_signal_pos_aug[0, :]
         return electrode_pos_aug, source_signal_pos_aug
 
-    # 执行扭曲操作
+    # Implement Distortion
     def distortion(self):
         electrode_pos_aug = self.electrode_pos_raw.clone().detach()
         source_signal_pos_aug = self.source_signal_pos_raw.clone().detach()
@@ -152,6 +153,7 @@ class SVG(object):
         electrode_pos_aug = electrode_pos_aug + rand_pos
         return electrode_pos_aug, source_signal_pos_aug
 
+    # Implement Data Augmentation Transform
     def transform(self, input_data, mode='Auto'):
         if mode=='Auto':
             if np.random.rand() < self.probability_flip:
@@ -193,31 +195,18 @@ class SVG(object):
             raise 'Warning! No specified mode for transform'
 
 if __name__ == "__main__":
-
-    # 创建SVG对象
+    # Create SVG object
     svg = SVG(cuda=True, sigma_rotate_theta=0.3, sigma_rotate_phi=0.1, cap='PhysioNetMI')
-
-    # 输入数据
-    input_data = torch.rand([64,480]).cuda()  # 假设这是EEG数据
-
-    # 进行自动模式下的变换
+    # Input data
+    input_data = torch.rand([64, 480]).cuda()  # Assuming this is EEG data
+    # Perform transformation in automatic mode
     output_data, is_flip = svg.transform(input_data, mode='Auto')
-    print(output_data.size())
-    print(is_flip)
-    # 进行旋转操作
+    # Perform rotation operation
     output_data, is_flip = svg.transform(input_data, mode='rotation')
-    print(output_data.size())
-    print(is_flip)
-    # 进行缩放操作
+    # Perform scaling operation
     output_data, is_flip = svg.transform(input_data, mode='scaling')
-    print(output_data.size())
-    print(is_flip)
-    # 进行扭曲操作
+    # Perform distortion operation
     output_data, is_flip = svg.transform(input_data, mode='distortion')
-    print(output_data.size())
-    print(is_flip)
-    # 进行左右翻转
+    # Perform left-right flipping
     output_data, is_flip = svg.transform(input_data, mode='flipping')
 
-    print(output_data.size())
-    print(is_flip)
