@@ -9,7 +9,7 @@
 
 1. **EEG 数据增强项目**
 2. **一个简单的 EEG 分类任务**
-
+![Banner](__docs__/logo.svg)
 您可以在各自的 README 文件中（均提供中英文版本）找到有关每个项目的详细信息，包括如何设置和使用它们。
 
 ## [EEG 数据增强项目](./EEG-Data-Augmentation/README_En.md)
