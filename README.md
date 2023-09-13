@@ -1,4 +1,4 @@
-# EEG Research Toolbox
+# EEGResearchHub
 
 Welcome to the EEG Research Toolbox! This repository serves as a hub for various projects focused on EEG (Electroencephalogram) research. This README is available in the following languages:
 
