@@ -8,6 +8,7 @@ config/
 XXX_channel_pos.npy
 XXX_channel_name.npy
 ...
+
 tools/
 SVG.py
 ...
