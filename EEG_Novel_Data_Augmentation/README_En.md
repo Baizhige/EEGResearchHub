@@ -29,3 +29,7 @@ This directory primarily contains configuration information related to the EEG e
 **Supported Datasets:** This includes but is not limited to PhysioNet Motor Imagery, Meng, BCIIV2A, Kaggle Motor Imagery datasets.
 
 **Custom Support:** If you need to use this on other datasets, you will need to create your own `.npy` file containing the electrode information.
+
+**Reference**: If you wish to cite an article for reference, kindly consider citing the following publication:
+
+`@ARTICLE{10248038, author={Qin, Chengxuan and Yang, Rui and Huang, Mengjie and Liu, Weibo and Wang, Zidong}, journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering},  title={Spatial Variation Generation Algorithm for Motor Imagery Data Augmentation: Increasing the Density of Sample Vicinity},  year={2023}, volume={}, number={}, pages={1-1}, doi={10.1109/TNSRE.2023.3314679}}`
