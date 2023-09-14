@@ -1,4 +1,3 @@
-# EEGResearchHub
 ![Banner](__docs__/logo.svg)
 欢迎来到EEGResearchHub！本仓库作为专注于 EEG（脑电图）研究的多个项目的集合平台。此 README 文件支持以下语言：
 
