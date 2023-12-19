@@ -10,7 +10,7 @@ from utils.data_loader import EEGDataSet
 from utils.test import test
 from utils.parse_config import parse_config
 from architecture.model_standard_EEGNet import EEGNet
-from architecture.model_standard_IncpetionEEG import inceptionEEGNet
+from architecture.model_standard_IncpetionEEG import Inception_EEG
 from architecture.model_standard_EEGSym import EEGSym
 from architecture.model_standard_ShallowFBCSPNet import ShallowFBCSPNetIRT
 from architecture.model_standard_Deep import DeepNetIRT
@@ -43,7 +43,7 @@ torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = True
 
 # Create the EEG classification model
-my_net = EEGNet(num_channel=config_dict['num_channel'], num_class=config_dict['num_class'],
+my_net = DeepNetIRT(num_channel=config_dict['num_channel'], num_class=config_dict['num_class'],
                 len_window=config_dict['len_window'])
 
 
@@ -81,7 +81,6 @@ eval_dataloader = torch.utils.data.DataLoader(
 
 # Set up the optimizer
 optimizer = optim.AdamW(my_net.parameters(), lr=lr)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5, last_epoch=-1)
 
 # Set up the loss function
 loss_function = torch.nn.NLLLoss()
@@ -129,7 +128,6 @@ for epoch in range(n_epoch):
                              % (epoch, i + 1, len_dataloader, err.data.cpu().numpy(),
                                 ))
             sys.stdout.flush()
-    scheduler.step()
 
     # Test the model on the evaluation dataset at the current epoch
     my_net = my_net.eval()

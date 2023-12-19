@@ -8,22 +8,23 @@ import numpy as np
 from torch import nn
 from torch.nn import init
 from torch.nn.functional import elu
+from collections import OrderedDict
 from .utils.model_standard_deep4_modules import Expression, AvgPool2dWithConv, Ensure4d
 from .utils.model_standard_deep4_functions import identity, transpose_time_to_spat, squeeze_final_output
 from .utils.model_standard_deep4_util import np_to_th
 import torch
 
-
-class Deep4Net(nn.Sequential):
+class DeepNetIRT(nn.Sequential):
     """Deep ConvNet model from Schirrmeister et al 2017.
+    The code was re-refactored by Chengxuan.Qin@outlook.com
     Model described in [Schirrmeister2017]_.
     Parameters
     ----------
-    in_chans : int
+    num_channel : int
      Number of EEG input channels.
-    n_classes: int
+    num_class: int
         Number of classes to predict (number of output filters of last layer).
-    input_window_samples: int | None
+    len_window: int | None
         Only used to determine the length of the last convolutional kernel if
         final_conv_length is "auto".
     final_conv_length: int | str
@@ -87,10 +88,10 @@ class Deep4Net(nn.Sequential):
 
     def __init__(
             self,
-            in_chans,
-            n_classes,
-            input_window_samples,
-            final_conv_length,
+            num_channel,
+            num_class,
+            len_window,
+            final_conv_length='auto',
             n_filters_time=25,
             n_filters_spat=25,
             filter_time_length=10,
@@ -112,14 +113,12 @@ class Deep4Net(nn.Sequential):
             split_first_layer=True,
             batch_norm=True,
             batch_norm_alpha=0.1,
-            stride_before_pool=False,
+            stride_before_pool=False
     ):
         super().__init__()
-        if final_conv_length == "auto":
-            assert input_window_samples is not None
-        self.in_chans = in_chans
-        self.n_classes = n_classes
-        self.input_window_samples = input_window_samples
+        self.in_chans = num_channel
+        self.n_classes = num_class
+        self.input_window_samples = len_window
         self.final_conv_length = final_conv_length
         self.n_filters_time = n_filters_time
         self.n_filters_spat = n_filters_spat
@@ -132,7 +131,7 @@ class Deep4Net(nn.Sequential):
         self.filter_length_3 = filter_length_3
         self.n_filters_4 = n_filters_4
         self.filter_length_4 = filter_length_4
-        self.first_nonlin = first_conv_nonlin
+        self.first_conv_nonlin = first_conv_nonlin
         self.first_pool_mode = first_pool_mode
         self.first_pool_nonlin = first_pool_nonlin
         self.later_conv_nonlin = later_conv_nonlin
@@ -144,186 +143,147 @@ class Deep4Net(nn.Sequential):
         self.batch_norm_alpha = batch_norm_alpha
         self.stride_before_pool = stride_before_pool
 
-        if self.stride_before_pool:
-            conv_stride = self.pool_time_stride
-            pool_stride = 1
-        else:
-            conv_stride = 1
-            pool_stride = self.pool_time_stride
-        self.add_module("ensuredims", Ensure4d())
+        self._build_feature_extractor()
+        self._build_feature_classifier()
+        self._initialize_weights()
+
+    def _build_feature_extractor(self):
+        # Feature extractor construction
         pool_class_dict = dict(max=nn.MaxPool2d, mean=AvgPool2dWithConv)
         first_pool_class = pool_class_dict[self.first_pool_mode]
         later_pool_class = pool_class_dict[self.later_pool_mode]
+
+        feature_layers = []
+
+        feature_layers.append(("ensuredims", Ensure4d()))
+        feature_layers.append(("dimshuffle", Expression(transpose_time_to_spat)))
+
         if self.split_first_layer:
-            self.add_module("dimshuffle", Expression(transpose_time_to_spat))
-            self.add_module(
-                "conv_time",
-                nn.Conv2d(
-                    1,
-                    self.n_filters_time,
-                    (self.filter_time_length, 1),
-                    stride=1,
-                ),
+            feature_layers.append(
+                ("conv_time",
+                 nn.Conv2d(
+                     1, self.n_filters_time, (self.filter_time_length, 1), stride=1
+                 ))
             )
-            self.add_module(
-                "conv_spat",
-                nn.Conv2d(
-                    self.n_filters_time,
-                    self.n_filters_spat,
-                    (1, self.in_chans),
-                    stride=(conv_stride, 1),
-                    bias=not self.batch_norm,
-                ),
+            feature_layers.append(
+                ("conv_spat",
+                 nn.Conv2d(
+                     self.n_filters_time, self.n_filters_spat,
+                     (1, self.in_chans), stride=(self._get_conv_stride(), 1),
+                     bias=not self.batch_norm
+                 ))
             )
             n_filters_conv = self.n_filters_spat
         else:
-            self.add_module(
-                "conv_time",
-                nn.Conv2d(
-                    self.in_chans,
-                    self.n_filters_time,
-                    (self.filter_time_length, 1),
-                    stride=(conv_stride, 1),
-                    bias=not self.batch_norm,
-                ),
+            feature_layers.append(
+                ("conv_time",
+                 nn.Conv2d(
+                     self.in_chans, self.n_filters_time,
+                     (self.filter_time_length, 1), stride=(self._get_conv_stride(), 1),
+                     bias=not self.batch_norm
+                 ))
             )
             n_filters_conv = self.n_filters_time
+
         if self.batch_norm:
-            self.add_module(
-                "bnorm",
-                nn.BatchNorm2d(
-                    n_filters_conv,
-                    momentum=self.batch_norm_alpha,
-                    affine=True,
-                    eps=1e-5,
-                ),
-            )
-        self.add_module("conv_nonlin", Expression(self.first_nonlin))
-        self.add_module(
-            "pool",
-            first_pool_class(
-                kernel_size=(self.pool_time_length, 1), stride=(pool_stride, 1)
-            ),
-        )
-        self.add_module("pool_nonlin", Expression(self.first_pool_nonlin))
-
-        def add_conv_pool_block(
-                model, n_filters_before, n_filters, filter_length, block_nr
-        ):
-            suffix = "_{:d}".format(block_nr)
-            self.add_module("drop" + suffix, nn.Dropout(p=self.drop_prob))
-            self.add_module(
-                "conv" + suffix,
-                nn.Conv2d(
-                    n_filters_before,
-                    n_filters,
-                    (filter_length, 1),
-                    stride=(conv_stride, 1),
-                    bias=not self.batch_norm,
-                ),
-            )
-            if self.batch_norm:
-                self.add_module(
-                    "bnorm" + suffix,
-                    nn.BatchNorm2d(
-                        n_filters,
-                        momentum=self.batch_norm_alpha,
-                        affine=True,
-                        eps=1e-5,
-                    ),
-                )
-            self.add_module("nonlin" + suffix, Expression(self.later_conv_nonlin))
-
-            self.add_module(
-                "pool" + suffix,
-                later_pool_class(
-                    kernel_size=(self.pool_time_length, 1),
-                    stride=(pool_stride, 1),
-                ),
-            )
-            self.add_module(
-                "pool_nonlin" + suffix, Expression(self.later_pool_nonlin)
+            feature_layers.append(
+                ("bnorm",
+                 nn.BatchNorm2d(n_filters_conv, momentum=self.batch_norm_alpha, affine=True, eps=1e-5))
             )
 
-        add_conv_pool_block(
-            self, n_filters_conv, self.n_filters_2, self.filter_length_2, 2
+        feature_layers.append(("conv_nonlin", Expression(self.first_conv_nonlin)))
+        feature_layers.append(
+            ("pool",
+             first_pool_class(kernel_size=(self.pool_time_length, 1), stride=(self._get_pool_stride(), 1)))
         )
-        add_conv_pool_block(
-            self, self.n_filters_2, self.n_filters_3, self.filter_length_3, 3
-        )
-        add_conv_pool_block(
-            self, self.n_filters_3, self.n_filters_4, self.filter_length_4, 4
-        )
+        feature_layers.append(("pool_nonlin", Expression(self.first_pool_nonlin)))
 
-        # self.add_module('drop_classifier', nn.Dropout(p=self.drop_prob))
-        self.eval()
+        self._add_conv_pool_block(feature_layers, n_filters_conv, self.n_filters_2, self.filter_length_2, 2)
+        self._add_conv_pool_block(feature_layers, self.n_filters_2, self.n_filters_3, self.filter_length_3, 3)
+        self._add_conv_pool_block(feature_layers, self.n_filters_3, self.n_filters_4, self.filter_length_4, 4)
+
+        self.feature_extractor = nn.Sequential(OrderedDict(feature_layers))
+
+    def _build_feature_classifier(self):
+        # Feature classifier construction
+        classifier_layers = []
+
         if self.final_conv_length == "auto":
-            out = self(
-                np_to_th(
-                    np.ones(
-                        (1, self.in_chans, self.input_window_samples, 1),
-                        dtype=np.float32,
-                    )
-                )
-            )
+            temp_model = nn.Sequential(OrderedDict(self.feature_extractor.named_children()))
+            out = temp_model(np_to_th(np.ones((1, self.in_chans, self.input_window_samples, 1), dtype=np.float32)))
             n_out_time = out.cpu().data.numpy().shape[2]
             self.final_conv_length = n_out_time
-        self.add_module(
-            "conv_classifier",
-            nn.Conv2d(
-                self.n_filters_4,
-                self.n_classes,
-                (self.final_conv_length, 1),
-                bias=True,
-            ),
+
+        classifier_layers.append(
+            ("conv_classifier",
+             nn.Conv2d(self.n_filters_4, self.n_classes, (self.final_conv_length, 1), bias=True))
         )
+        classifier_layers.append(("squeeze", Expression(squeeze_final_output)))
 
-        self.add_module("squeeze", Expression(squeeze_final_output))
+        self.classifier = nn.Sequential(OrderedDict(classifier_layers))
 
-        # Initialization, xavier is same as in our paper...
-        # was default from lasagne
-        init.xavier_uniform_(self.conv_time.weight, gain=1)
-        # maybe no bias in case of no split layer and batch norm
-        if self.split_first_layer or (not self.batch_norm):
-            init.constant_(self.conv_time.bias, 0)
-        if self.split_first_layer:
-            init.xavier_uniform_(self.conv_spat.weight, gain=1)
-            if not self.batch_norm:
-                init.constant_(self.conv_spat.bias, 0)
+    def _initialize_weights(self):
+        # Initialize weights for feature extractor
+        for name, module in self.feature_extractor.named_modules():
+            if isinstance(module, nn.Conv2d):
+                init.xavier_uniform_(module.weight, gain=1)
+                if module.bias is not None:
+                    init.constant_(module.bias, 0)
+            elif isinstance(module, nn.BatchNorm2d):
+                init.constant_(module.weight, 1)
+                init.constant_(module.bias, 0)
+
+        # Initialize weights for feature classifier
+        for name, module in self.classifier.named_modules():
+            if isinstance(module, nn.Conv2d):
+                init.xavier_uniform_(module.weight, gain=1)
+                if module.bias is not None:
+                    init.constant_(module.bias, 0)
+            elif isinstance(module, nn.BatchNorm2d):
+                init.constant_(module.weight, 1)
+                init.constant_(module.bias, 0)
+
+    def _get_conv_stride(self):
+        return self.pool_time_stride if self.stride_before_pool else 1
+
+    def _get_pool_stride(self):
+        return 1 if self.stride_before_pool else self.pool_time_stride
+
+    def _add_conv_pool_block(self, feature_layers, n_filters_before, n_filters, filter_length, block_nr):
+        suffix = f"_{block_nr}"
+        feature_layers.append(
+            ("drop" + suffix, nn.Dropout(p=self.drop_prob))
+        )
+        feature_layers.append(
+            ("conv" + suffix,
+             nn.Conv2d(
+                 n_filters_before, n_filters, (filter_length, 1), stride=(self._get_conv_stride(), 1),
+                 bias=not self.batch_norm
+             ))
+        )
         if self.batch_norm:
-            init.constant_(self.bnorm.weight, 1)
-            init.constant_(self.bnorm.bias, 0)
-        param_dict = dict(list(self.named_parameters()))
-        for block_nr in range(2, 5):
-            conv_weight = param_dict["conv_{:d}.weight".format(block_nr)]
-            init.xavier_uniform_(conv_weight, gain=1)
-            if not self.batch_norm:
-                conv_bias = param_dict["conv_{:d}.bias".format(block_nr)]
-                init.constant_(conv_bias, 0)
-            else:
-                bnorm_weight = param_dict["bnorm_{:d}.weight".format(block_nr)]
-                bnorm_bias = param_dict["bnorm_{:d}.bias".format(block_nr)]
-                init.constant_(bnorm_weight, 1)
-                init.constant_(bnorm_bias, 0)
+            feature_layers.append(
+                ("bnorm" + suffix,
+                 nn.BatchNorm2d(n_filters, momentum=self.batch_norm_alpha, affine=True, eps=1e-5))
+            )
+        feature_layers.append(("nonlin" + suffix, Expression(self.later_conv_nonlin)))
 
-        init.xavier_uniform_(self.conv_classifier.weight, gain=1)
-        init.constant_(self.conv_classifier.bias, 0)
-
-        # Start in eval mode
-        self.eval()
-
-
-class DeepNetIRT(nn.Module):
-    def __init__(self, num_channel, num_class, len_window):
-        super(DeepNetIRT, self).__init__()
-        self.net = Deep4Net(in_chans=num_channel, n_classes=num_class, input_window_samples=len_window,
-                            final_conv_length='auto')
+        pool_class = dict(max=nn.MaxPool2d, mean=AvgPool2dWithConv)[self.later_pool_mode]
+        feature_layers.append(
+            ("pool" + suffix,
+             pool_class(kernel_size=(self.pool_time_length, 1), stride=(self._get_pool_stride(), 1)))
+        )
+        feature_layers.append(("pool_nonlin" + suffix, Expression(self.later_pool_nonlin)))
 
     def forward(self, input_data):
+        # Define the forward pass
         input_data = input_data.type(torch.cuda.FloatTensor)
         input_data = input_data.permute(0, 2, 3, 1)
-        out = self.net(input_data)
-        return out
+        features = self.feature_extractor(input_data)
+        output = self.classifier(features)
+        return output
+
+
 
 
 if __name__ == "__main__":

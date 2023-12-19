@@ -2,7 +2,7 @@
 # Description:
 # Santamaría-Vázquez developed "EEGInception" in tensorflow, as shown in https://github.com/esantamariavazquez/EEG-Inception.
 # I simply implement in pytorch the input and output shapes to maintain uniformity with other networks.
-# The class is called "inceptionEEGNet".
+# The class is called "Inception_EEG".
 
 
 import torch.nn as nn
@@ -110,11 +110,11 @@ class InceptionEEGNet_Block2(nn.Module):
         return A2
 
 
-class inceptionEEGNet(nn.Module):
+class Inception_EEG(nn.Module):
 
     def __init__(self, num_channel, num_class, len_window):
         super(inceptionEEGNet, self).__init__()
-        # 定义了特征提取器，两个卷积层
+        # feature extractor
         self.kernel_size = 80
         self.F1 = 8
         self.D = 2
@@ -123,7 +123,6 @@ class inceptionEEGNet(nn.Module):
         self.n_classes = num_class
         self.len_window = len_window
         self.feature = nn.Sequential()
-        # self.feature.add_module('f_attention', mixAttention())
         # (N,1,64,256)
         self.feature.add_module('f_block1', InceptionEEGNet_Block1(kernel_size=80, num_channel=self.num_channel))
         # (N,48,1,256/4)
@@ -149,7 +148,7 @@ class inceptionEEGNet(nn.Module):
                                 nn.AvgPool2d(kernel_size=(1, 2)))
         # (N,6,1,256/4/2/2/2)= (N,6,1,256/4/2/2/2)=48
 
-        # 定义了特征分类器，是三层全连接层，结果如下：
+        # class_classifier
         # 48- > 24
         # 24 - > 8
         # 8 - > 2

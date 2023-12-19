@@ -15,15 +15,16 @@ from .utils.model_standard_deep4_functions import (
     safe_log, square, transpose_time_to_spat, squeeze_final_output
 )
 
-
-class ShallowFBCSPNet(nn.Sequential):
-    """Shallow ConvNet model from Schirrmeister et al 2017.
+class ShallowFBCSPNetIRT(nn.Module):
+    """
+    The code was re-refactored by Chengxuan.Qin@outlook.com
+    Shallow ConvNet model from Schirrmeister et al 2017.
     Model described in [Schirrmeister2017]_.
     Parameters
     ----------
-    in_chans : int
+    num_channel : int
         Number of EEG input channels.
-    n_classes: int
+    num_class: int
         Number of classes to predict (number of output filters of last layer).
     input_window_samples: int | None
         Only used to determine the length of the last convolutional kernel if
@@ -66,18 +67,17 @@ class ShallowFBCSPNet(nn.Sequential):
        Human Brain Mapping , Aug. 2017.
        Online: https://dx.doi.org/10.1002/hbm.23730
     """
-
     def __init__(
             self,
-            in_chans,
-            n_classes,
-            input_window_samples=None,
+            num_channel,
+            num_class,
+            len_window=None,
             n_filters_time=40,
             filter_time_length=25,
             n_filters_spat=40,
             pool_time_length=75,
             pool_time_stride=15,
-            final_conv_length=30,
+            final_conv_length='auto',
             conv_nonlin=square,
             pool_mode="mean",
             pool_nonlin=safe_log,
@@ -85,13 +85,11 @@ class ShallowFBCSPNet(nn.Sequential):
             batch_norm=True,
             batch_norm_alpha=0.1,
             drop_prob=0.5,
-    ):
-        super().__init__()
-        if final_conv_length == "auto":
-            assert input_window_samples is not None
-        self.in_chans = in_chans
-        self.n_classes = n_classes
-        self.input_window_samples = input_window_samples
+        ):
+        super(ShallowFBCSPNetIRT, self).__init__()
+        self.in_chans = num_channel
+        self.n_classes = num_class
+        self.input_window_samples = len_window
         self.n_filters_time = n_filters_time
         self.filter_time_length = filter_time_length
         self.n_filters_spat = n_filters_spat
@@ -106,62 +104,83 @@ class ShallowFBCSPNet(nn.Sequential):
         self.batch_norm_alpha = batch_norm_alpha
         self.drop_prob = drop_prob
 
-        self.add_module("ensuredims", Ensure4d())
+        self._build_feature_extractor()          # build_feature_extractor
+        self._build_feature_classifier()          # build_feature_classifier
+        self._initialize_weights()     # initialize the weights of networks
+
+    def _build_feature_extractor(self):
+        self.ensuredims = Ensure4d()
         pool_class = dict(max=nn.MaxPool2d, mean=nn.AvgPool2d)[self.pool_mode]
+
+        # Temporal and Spatial Convolution
         if self.split_first_layer:
-            self.add_module("dimshuffle", Expression(transpose_time_to_spat))
-            self.add_module(
-                "conv_time",
-                nn.Conv2d(
-                    1,
-                    self.n_filters_time,
-                    (self.filter_time_length, 1),
-                    stride=1,
-                ),
+            self.conv_time = nn.Conv2d(
+                1,
+                self.n_filters_time,
+                (self.filter_time_length, 1),
+                stride=1,
             )
-            self.add_module(
-                "conv_spat",
-                nn.Conv2d(
-                    self.n_filters_time,
-                    self.n_filters_spat,
-                    (1, self.in_chans),
-                    stride=1,
-                    bias=not self.batch_norm,
-                ),
+            self.conv_spat = nn.Conv2d(
+                self.n_filters_time,
+                self.n_filters_spat,
+                (1, self.in_chans),
+                stride=1,
+                bias=not self.batch_norm,
             )
             n_filters_conv = self.n_filters_spat
         else:
-            self.add_module(
-                "conv_time",
-                nn.Conv2d(
-                    self.in_chans,
-                    self.n_filters_time,
-                    (self.filter_time_length, 1),
-                    stride=1,
-                    bias=not self.batch_norm,
-                ),
+            self.conv_time = nn.Conv2d(
+                self.in_chans,
+                self.n_filters_time,
+                (self.filter_time_length, 1),
+                stride=1,
+                bias=not self.batch_norm,
             )
             n_filters_conv = self.n_filters_time
+
+        # Batchnorm Layer
         if self.batch_norm:
-            self.add_module(
-                "bnorm",
-                nn.BatchNorm2d(
-                    n_filters_conv, momentum=self.batch_norm_alpha, affine=True
-                ),
+            self.bnorm = nn.BatchNorm2d(
+                n_filters_conv, momentum=self.batch_norm_alpha, affine=True
             )
-        self.add_module("conv_nonlin_exp", Expression(self.conv_nonlin))
-        self.add_module(
-            "pool",
-            pool_class(
-                kernel_size=(self.pool_time_length, 1),
-                stride=(self.pool_time_stride, 1),
-            ),
+
+        # Non-linear Expression
+        self.conv_nonlin_exp = Expression(self.conv_nonlin)
+
+        # Pooling Layer
+        self.pool = pool_class(
+            kernel_size=(self.pool_time_length, 1),
+            stride=(self.pool_time_stride, 1),
         )
-        self.add_module("pool_nonlin_exp", Expression(self.pool_nonlin))
-        self.add_module("drop", nn.Dropout(p=self.drop_prob))
-        self.eval()
+
+        # Non-linear Expression (after pooling layer)
+        self.pool_nonlin_exp = Expression(self.pool_nonlin)
+
+        # Dropout Layer
+        self.drop = nn.Dropout(p=self.drop_prob)
+
+
+
+        # Feature Extractor
+        feature_layers = [
+            self.ensuredims,
+            Expression(transpose_time_to_spat) if self.split_first_layer else nn.Identity(),
+            self.conv_time,
+            self.conv_spat if self.split_first_layer else nn.Identity(),
+            self.bnorm if self.batch_norm else nn.Identity(),
+            self.conv_nonlin_exp,
+            self.pool,
+            self.pool_nonlin_exp,
+            self.drop
+        ]
+        self.n_filters_conv = n_filters_conv
+        self.feature_extractor = nn.Sequential(*feature_layers)
+
+
+    def _build_feature_classifier(self):
+        # Feature Classifier
         if self.final_conv_length == "auto":
-            out = self(
+            out = self.feature_extractor(
                 np_to_th(
                     np.ones(
                         (1, self.in_chans, self.input_window_samples, 1),
@@ -171,46 +190,40 @@ class ShallowFBCSPNet(nn.Sequential):
             )
             n_out_time = out.cpu().data.numpy().shape[2]
             self.final_conv_length = n_out_time
-        self.add_module(
-            "conv_classifier",
-            nn.Conv2d(
-                n_filters_conv,
-                self.n_classes,
-                (self.final_conv_length, 1),
-                bias=True,
-            ),
+        self.conv_classifier = nn.Conv2d(
+            self.n_filters_conv,
+            self.n_classes,
+            (self.final_conv_length, 1),
+            bias=True
         )
-        # self.add_module("softmax", nn.LogSoftmax(dim=1))
-        self.add_module("squeeze", Expression(squeeze_final_output))
+        self.classifier = nn.Sequential(
+            self.conv_classifier,
+            Expression(squeeze_final_output)
+        )
 
-        # Initialization, xavier is same as in paper...
+    def _initialize_weights(self):
         init.xavier_uniform_(self.conv_time.weight, gain=1)
-        # maybe no bias in case of no split layer and batch norm
-        if self.split_first_layer or (not self.batch_norm):
-            init.constant_(self.conv_time.bias, 0)
+        if self.split_first_layer or not self.batch_norm:
+            if self.conv_time.bias is not None:
+                init.zeros_(self.conv_time.bias)
+
         if self.split_first_layer:
             init.xavier_uniform_(self.conv_spat.weight, gain=1)
             if not self.batch_norm:
-                init.constant_(self.conv_spat.bias, 0)
+                init.zeros_(self.conv_spat.bias)
+
         if self.batch_norm:
-            init.constant_(self.bnorm.weight, 1)
-            init.constant_(self.bnorm.bias, 0)
+            init.ones_(self.bnorm.weight)
+            init.zeros_(self.bnorm.bias)
+
         init.xavier_uniform_(self.conv_classifier.weight, gain=1)
-        init.constant_(self.conv_classifier.bias, 0)
-
-
-class ShallowFBCSPNetIRT(nn.Module):
-    def __init__(self, num_channel, num_class, len_window):
-        super(ShallowFBCSPNetIRT, self).__init__()
-        self.net = ShallowFBCSPNet(in_chans=num_channel, n_classes=num_class, input_window_samples=len_window,
-                                   final_conv_length='auto')
-
+        init.zeros_(self.conv_classifier.bias)
     def forward(self, input_data):
         input_data = input_data.type(torch.cuda.FloatTensor)
         input_data = input_data.permute(0, 2, 3, 1)
-        out = self.net(input_data)
-        return out
-
+        features = self.feature_extractor(input_data)
+        output = self.classifier(features)
+        return output
 
 if __name__ == "__main__":
     from thop import profile
