@@ -23,6 +23,9 @@
 - **简介:** 这是一个通用的 EEG 神经网络训练框架。它包括一系列用于运动意象分类任务的深度神经网络架构。
 - **[阅读更多（英文版）](./A_Quick_EEG_Classification/README_En.md) | [更多信息](./A_Quick_EEG_Classification/README_Ch.md)**
 
+## [更多代码]
+-- **EDAN:** 您可以点击[这里](https://github.com/OrangeP0P/EDAN)找到我们团队其他实施迁移学习技术的示例.
+
 ## 语言选项
 
 两个项目都有详尽的中英文文档，以帮助您入门。
