@@ -33,7 +33,7 @@
 存储训练结果
 
 ## `demo_data` 目录
-存储示例数据集。它目前包括BCICIV 2a数据集。`DL_BCICIV2a_c2RL_640_no_filter_pro`文件夹存储了按5折交叉验证划分的数据索引，这些索引也符合跨主题研究的标准。例如，MI_train0、MI_eval0和MI_test0分别代表第0折的训练集、验证集和测试集的数据索引。
+存储示例数据集。它目前包括BCICIV 2a数据集。`DL_BCICIV2a_c2RL_640_no_filter_pro`文件夹存储了按5折交叉验证划分的数据索引，这些索引也符合跨用户研究的标准。例如，MI_train0、MI_eval0和MI_test0分别代表第0折的训练集、验证集和测试集的数据索引。
 
 ## 版权信息
 该项目的代码遵循[MIT许可](LICENSE)。
