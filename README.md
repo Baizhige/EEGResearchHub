@@ -23,6 +23,8 @@ You can find detailed information about each project, including how to set up an
 - **Description:** A general-purpose EEG neural network training framework. It features a collection of deep neural network architectures for Motor Imagery classification tasks.
 - **[Read More in English](./A_Quick_EEG_Classification/README_En.md) | [更多信息](./A_Quick_EEG_Classification/README_Ch.md)**
 
+## [More Codes]
+-- **EDAN**:Examples of our team's implementation of transfer learning techniques can be found [here](https://github.com/OrangeP0P/EDAN).
 ## Language Options
 
 Both projects are documented extensively in both English and Chinese to help you get started.
