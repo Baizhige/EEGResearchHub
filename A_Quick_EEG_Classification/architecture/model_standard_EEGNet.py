@@ -11,13 +11,24 @@ import torch
 class depthwise_separable_conv(nn.Module):
     def __init__(self, nin, nout, kernel_size):
         super(depthwise_separable_conv, self).__init__()
-        self.depthwise = nn.Conv2d(nin, nout, kernel_size=(1, kernel_size), padding=0, groups=nin)
-        self.pointwise = nn.Conv2d(nout, nout, kernel_size=1)
+        self.depthwise = nn.Conv2d(nin, nin, kernel_size=(1, kernel_size), padding=0, groups=nin, bias=False)
+        self.pointwise = nn.Conv2d(nin, nout, kernel_size=1, bias=False)
 
     def forward(self, x):
         out = self.depthwise(x)
         out = self.pointwise(out)
         return out
+
+class conv2d_weight_constraint(nn.Conv2d):
+    def __init__(self, *args, max_norm=1, **kwargs):
+        self.max_norm = max_norm
+        super(conv2d_weight_constraint, self).__init__(*args, **kwargs)
+
+    def forward(self, x):
+        self.weight.data = torch.renorm(
+            self.weight.data, p=2, dim=0, maxnorm=self.max_norm
+        )
+        return super(conv2d_weight_constraint, self).forward(x)
 
 class EEGNet(nn.Module):
     """
@@ -48,12 +59,14 @@ class EEGNet(nn.Module):
         self.len_window = len_window
         self.feature = nn.Sequential()
         # (N, 1, 64, 256)
-        self.feature.add_module('f_conv1', nn.Conv2d(1, self.F1, (1, self.kernel_size), padding=0))
+        self.feature.add_module('f_conv1', nn.Conv2d(1, self.F1, (1, self.kernel_size), padding=0, bias=False))
         self.feature.add_module('f_padding1',
                                 nn.ZeroPad2d((int(self.kernel_size / 2) - 1, int(self.kernel_size / 2), 0, 0)))
         self.feature.add_module('f_batchnorm1', nn.BatchNorm2d(self.F1, False))
         # (N, F1, 64, 256)
-        self.feature.add_module('f_conv2', nn.Conv2d(self.F1, self.F1 * self.D, (self.num_channel, 1), groups=8))
+        # self.feature.add_module('f_conv2', nn.Conv2d(self.F1, self.F1 * self.D, (self.num_channel, 1), groups=8))
+        # DepthwiseConv2D
+        self.feature.add_module('f_depthwiseconv2d', conv2d_weight_constraint(in_channels=self.F1,out_channels=self.F1 * self.D,kernel_size=(self.num_channel, 1), max_norm=1, bias=False,groups=self.F1,padding=0))
         self.feature.add_module('f_batchnorm2', nn.BatchNorm2d(self.F1 * self.D, False))
         self.feature.add_module('f_ELU2', nn.ELU())
         # (N, F1 * D, 1, 256)
