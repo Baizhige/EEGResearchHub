@@ -33,8 +33,3 @@ Both projects are documented extensively in both English and Chinese to help you
 
 Feel free to contribute to any of these projects. If you find any issues or have suggestions, please open an issue.
 
-## License
-
-The code in this toolbox is available under various licenses. Please see the README in each project directory for specific licensing information.
-
-For general inquiries or issues, please feel free to contact us.
